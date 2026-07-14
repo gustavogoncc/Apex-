@@ -1,65 +1,84 @@
-import Image from "next/image";
+import Link from 'next/link'
+import Image from 'next/image'
+import { Button } from '@/components/ui/button'
+import { ArrowRight, BookOpen, CheckCircle2, LayoutDashboard } from 'lucide-react'
 
-export default function Home() {
+export default function LandingPage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 selection:bg-[#ff5f3a]/30">
+      {/* Header */}
+      <nav className="flex items-center justify-between p-6 max-w-6xl mx-auto">
+        <div className="w-32">
+          <Image src="/img/APEX.png" alt="APEX Study" width={128} height={42} className="object-contain" />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="flex gap-4">
+          <Link href="/login">
+            <Button variant="ghost" className="text-zinc-400 hover:text-zinc-50">Entrar</Button>
+          </Link>
+          <Link href="/cadastro">
+            <Button className="bg-[#ff5f3a] text-white hover:bg-[#ff5f3a]/90">Cadastrar</Button>
+          </Link>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <main className="max-w-4xl mx-auto px-6 py-20 text-center">
+        <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-6">
+          Domine seus estudos com o <span className="text-[#ff5f3a]">APEX</span>
+        </h1>
+        <p className="text-xl text-zinc-400 mb-10 max-w-2xl mx-auto">
+          A plataforma definitiva para organizar suas rotas, mapear conteúdos e alcançar seus objetivos de forma simples e eficiente.
+        </p>
+        <div className="flex gap-4 justify-center">
+          <Link href="/cadastro">
+            <Button size="lg" className="bg-[#ff5f3a] text-white hover:bg-[#ff5f3a]/90 h-12 px-8 text-lg">
+              Começar Agora <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+          </Link>
+        </div>
+
+        {/* Destaques com Animação Hover */}
+        <div className="grid md:grid-cols-3 gap-8 mt-24">
+          {[
+            { icon: LayoutDashboard, title: "Organização", desc: "Estruture suas rotas de estudos e acompanhe seu progresso." },
+            { icon: BookOpen, title: "Conteúdo", desc: "Mapeie tópicos, materiais e métricas de desempenho." },
+            { icon: CheckCircle2, title: "Conclusão", desc: "Marque o que já foi dominado e mantenha o foco no próximo passo." }
+          ].map((item, i) => (
+            <div 
+              key={i} 
+              className="p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800 transition-all duration-300 hover:border-[#ff5f3a]/50 hover:shadow-lg hover:shadow-[#ff5f3a]/10 hover:-translate-y-2 cursor-default"
+            >
+              <item.icon className="h-8 w-8 text-[#192e5b] mb-4 mx-auto" />
+              <h3 className="font-semibold mb-2">{item.title}</h3>
+              <p className="text-sm text-zinc-400">{item.desc}</p>
+            </div>
+          ))}
         </div>
       </main>
+
+      {/* Footer Minimalista */}
+      <footer className="border-t border-zinc-900 mt-20 py-8 px-6">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+          
+         {/* Logo e Powered By */}
+<div className="flex flex-col items-center md:items-start gap-1">
+  <Image src="/img/APEX.png" alt="APEX Study" width={100} height={33} />
+  <a 
+    href="https://www.instagram.com/verosoftwares/"
+    target="_blank" 
+    rel="noopener noreferrer" 
+    className="text-[10px] uppercase tracking-widest text-zinc-600 hover:text-[#ff5f3a] transition-colors"
+  >
+    Powered by Vero Softwares
+  </a>
+</div>
+          
+          {/* Copyright */}
+          <p className="text-sm text-zinc-600">
+            © 2026 Apex Studies. Todos os direitos reservados.
+          </p>
+        </div>
+      </footer>
     </div>
-  );
+  )
 }

@@ -20,7 +20,6 @@ export default function RotasPage() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
 
-  // 1. Buscar as rotas do usuário logado no banco de dados
   const fetchRoutes = async () => {
     setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
@@ -29,6 +28,7 @@ export default function RotasPage() {
       const { data, error } = await supabase
         .from('study_routes')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
       if (!error && data) {
@@ -42,7 +42,6 @@ export default function RotasPage() {
     fetchRoutes()
   }, [])
 
-  // 2. Inserir uma nova rota atrelada ao ID do usuário
   const handleCreateRoute = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!routeName.trim()) return
@@ -57,10 +56,9 @@ export default function RotasPage() {
 
       if (!error) {
         setRouteName('')
-        fetchRoutes() // Atualiza a lista automaticamente na tela
+        fetchRoutes()
       } else {
         console.error('Erro ao criar rota:', error.message)
-        alert('Erro ao salvar. Certifique-se de que as políticas RLS estão configuradas.')
       }
     }
     setCreating(false)
@@ -68,20 +66,20 @@ export default function RotasPage() {
 
   return (
     <div className="space-y-8">
-      {/* Cabeçalho da página */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Minhas Rotas de Estudo</h1>
+      <div className="border-b border-zinc-800 pb-5">
+        <h1 className="text-3xl font-bold tracking-tight text-zinc-50 flex items-center gap-2">
+          <Folder className="h-8 w-8 text-[#192e5b]" /> Minhas Rotas de Estudo
+        </h1>
         <p className="text-zinc-400 text-sm mt-1">
           Gerencie e organize seus caminhos de aprendizado para concursos e projetos.
         </p>
       </div>
 
-      {/* Formulário de Criação rápida */}
       <Card className="border-zinc-800 bg-zinc-900 text-zinc-50">
         <CardHeader>
           <CardTitle className="text-lg font-medium">Nova Rota de Estudos</CardTitle>
           <CardDescription className="text-zinc-400">
-            Dê um nome para o seu objetivo atual (ex: Concurso FUB, Dev Fullstack, Foco OAB).
+            Dê um nome para o seu objetivo atual (ex: Concurso FUB, Dev Fullstack).
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -91,10 +89,10 @@ export default function RotasPage() {
               placeholder="Digite o nome da rota..."
               value={routeName}
               onChange={(e) => setRouteName(e.target.value)}
-              className="border-zinc-700 bg-zinc-800 text-zinc-100 placeholder-zinc-500 focus-visible:ring-zinc-400 max-w-md"
+              className="border-zinc-700 bg-zinc-800 text-zinc-100 placeholder-zinc-500 focus-visible:ring-[#192e5b] max-w-md"
               required
             />
-            <Button type="submit" disabled={creating} className="bg-zinc-100 text-zinc-900 hover:bg-zinc-200 whitespace-nowrap">
+            <Button type="submit" disabled={creating} className="bg-[#ff5f3a] text-white hover:bg-[#ff5f3a]/90 whitespace-nowrap">
               {creating ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
@@ -106,9 +104,8 @@ export default function RotasPage() {
         </CardContent>
       </Card>
 
-      {/* Grid de Exibição das Rotas */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold tracking-tight text-zinc-200">Seus Objetivos</h2>
+        <h2 className="text-xl font-semibold tracking-tight text-zinc-50">Seus Objetivos</h2>
         
         {loading ? (
           <div className="flex items-center gap-2 text-zinc-400 text-sm">
@@ -119,10 +116,10 @@ export default function RotasPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {routes.map((route) => (
-              <Card key={route.id} className="border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/80 transition-all text-zinc-50 flex flex-col justify-between">
+              <Card key={route.id} className="border-zinc-800 bg-zinc-900/40 hover:border-[#192e5b] transition-all text-zinc-50 flex flex-col justify-between">
                 <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-zinc-800 rounded-lg text-zinc-300 border border-zinc-700">
+                    <div className="p-2 bg-[#192e5b]/20 rounded-lg text-[#192e5b] border border-[#192e5b]/30">
                       <Folder className="h-5 w-5" />
                     </div>
                     <CardTitle className="text-base font-semibold tracking-tight">{route.name}</CardTitle>
@@ -130,7 +127,7 @@ export default function RotasPage() {
                 </CardHeader>
                 <CardContent className="flex justify-end border-t border-zinc-800/60 pt-3">
                   <Link href={`/rotas/${route.id}`}>
-                    <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-zinc-100 gap-1 hover:bg-zinc-800">
+                    <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-[#ff5f3a] gap-1 hover:bg-zinc-800">
                       Acessar Rota <ArrowRight className="h-4 w-4" />
                     </Button>
                   </Link>
