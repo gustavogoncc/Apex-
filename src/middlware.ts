@@ -1,36 +1,47 @@
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
-  
-  // Cria o cliente do Supabase para o middleware
-  const supabase = createMiddlewareClient({ req, res })
+export async function middleware(request: NextRequest) {
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
 
-  // Verifica a sessão
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          request.cookies.set({ name, value, ...options })
+          response = NextResponse.next({
+            request: { headers: request.headers },
+          })
+          response.cookies.set({ name, value, ...options })
+        },
+        remove(name: string, options: CookieOptions) {
+          request.cookies.set({ name, value: '', ...options })
+          response = NextResponse.next({
+            request: { headers: request.headers },
+          })
+          response.cookies.set({ name, value: '', ...options })
+        },
+      },
+    }
+  )
 
-  // Define as rotas públicas (que não precisam de login)
-  const isAuthPage = req.nextUrl.pathname.startsWith('/login') || req.nextUrl.pathname.startsWith('/cadastro')
-  const isLandingPage = req.nextUrl.pathname === '/'
+  // Verifica a autenticação
+  await supabase.auth.getUser()
 
-  // Se o usuário NÃO estiver logado e tentar acessar uma página protegida
-  if (!session && !isAuthPage && !isLandingPage) {
-    return NextResponse.redirect(new URL('/login', req.url))
-  }
-
-  // Se o usuário ESTIVER logado e tentar acessar login/cadastro, redireciona para o dashboard
-  if (session && (isAuthPage)) {
-    return NextResponse.redirect(new URL('/dashboard', req.url))
-  }
-
-  return res
+  return response
 }
 
-// Configura em quais rotas o middleware deve rodar
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|img).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 }

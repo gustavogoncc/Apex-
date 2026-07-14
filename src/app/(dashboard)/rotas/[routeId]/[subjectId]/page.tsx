@@ -175,7 +175,7 @@ export default function SubjectDetailsPage({ params }: { params: Promise<{ route
             <form onSubmit={handleCreateTopic} className="space-y-4">
               <Input placeholder="Nome do assunto" value={newTopicName} onChange={e => setNewTopicName(e.target.value)} className="bg-zinc-800 border-zinc-700 text-zinc-100" />
               <div className="flex gap-4">
-                <Select value={difficulty} onValueChange={setDifficulty}>
+                <Select value={difficulty} onValueChange={(val) => setDifficulty(val ?? "")}>
                   <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-300"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-zinc-800 border-zinc-700">
                     <SelectItem value="FACIL">Fácil</SelectItem>
@@ -183,7 +183,7 @@ export default function SubjectDetailsPage({ params }: { params: Promise<{ route
                     <SelectItem value="DIFICIL">Difícil</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select value={status} onValueChange={setStatus}>
+                <Select value={status} onValueChange={(val) => setStatus(val ?? "")}>
                   <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-300"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-zinc-800 border-zinc-700">
                     <SelectItem value="A_ESTUDAR">A Estudar</SelectItem>
