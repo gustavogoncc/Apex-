@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ChevronLeft, CheckCircle2, Circle, Plus, ExternalLink, BookOpen, Loader2, Trash2 } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { ChevronLeft, CheckCircle2, Circle, Plus, ExternalLink, BookOpen, Loader2, Trash2, Calendar, Link as LinkIcon, FileText } from 'lucide-react'
 
 export default function SubjectDetailsPage({ params }: { params: Promise<{ routeId: string; subjectId: string }> }) {
   const resolvedParams = use(params)
@@ -17,25 +18,32 @@ export default function SubjectDetailsPage({ params }: { params: Promise<{ route
   const [timeLeft, setTimeLeft] = useState(25 * 60)
   const [isActive, setIsActive] = useState(false)
   const [subjectName, setSubjectName] = useState('Carregando...')
+  
+  // Estados de dados
   const [topics, setTopics] = useState<any[]>([])
-  const [materials, setMaterials] = useState<any[]>([])
+  const [notes, setNotes] = useState<any[]>([])
   const [questions, setQuestions] = useState<any[]>([])
   
+  // Estados de formulário - Tópicos
   const [newTopicName, setNewTopicName] = useState('')
   const [difficulty, setDifficulty] = useState('MEDIO')
   const [status, setStatus] = useState('A_ESTUDAR')
   
-  const [materialTitle, setMaterialTitle] = useState('')
-  const [materialUrl, setMaterialUrl] = useState('')
+  // Estados de formulário - Anotações
+  const [noteTitle, setNoteTitle] = useState('')
+  const [noteDescription, setNoteDescription] = useState('')
+  const [noteUrl, setNoteUrl] = useState('')
+  
+  // Estados de formulário - Metas e Questões
   const [dailyGoal, setDailyGoal] = useState('')
   const [weeklyGoal, setWeeklyGoal] = useState('')
-
   const [qTotal, setQTotal] = useState('')
   const [qCorrect, setQCorrect] = useState('')
   const [qWrong, setQWrong] = useState('')
   
+  // Loaders
   const [creatingTopic, setCreatingTopic] = useState(false)
-  const [creatingMaterial, setCreatingMaterial] = useState(false)
+  const [creatingNote, setCreatingNote] = useState(false)
   const [savingGoals, setSavingGoals] = useState(false)
   const [savingQuest, setSavingQuest] = useState(false)
   const [stats, setStats] = useState({ totalSolved: 0, totalCorrect: 0, rate: 0 })
@@ -69,8 +77,8 @@ export default function SubjectDetailsPage({ params }: { params: Promise<{ route
       setStats({ totalSolved: total, totalCorrect: correct, rate: total > 0 ? Math.round((correct / total) * 100) : 0 })
     }
     
-    const { data: m } = await supabase.from('documents').select('*').eq('subject_id', subjectId)
-    setMaterials(m || [])
+    const { data: n } = await supabase.from('notes').select('*').eq('subject_id', subjectId).order('created_at', { ascending: false })
+    setNotes(n || [])
   }
 
   useEffect(() => { fetchData() }, [subjectId])
@@ -105,15 +113,27 @@ export default function SubjectDetailsPage({ params }: { params: Promise<{ route
     setCreatingTopic(false)
   }
 
-  const handleCreateMaterial = async (e: React.FormEvent) => {
+  const handleCreateNote = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!materialTitle.trim()) return
-    setCreatingMaterial(true)
-    const { error } = await supabase.from('documents').insert([{ subject_id: subjectId, file_name: materialTitle, file_url: materialUrl }])
-    if (error) alert("Erro ao salvar material: " + error.message)
-    setMaterialTitle(''); setMaterialUrl('')
-    await fetchData()
-    setCreatingMaterial(false)
+    if (!noteTitle.trim() || !noteDescription.trim()) return
+    setCreatingNote(true)
+    
+    const { error } = await supabase.from('notes').insert([{
+      subject_id: subjectId,
+      title: noteTitle.trim(),
+      description: noteDescription.trim(),
+      url: noteUrl.trim() ? noteUrl.trim() : null
+    }])
+    
+    if (error) {
+      alert("Erro ao salvar anotação: " + error.message)
+    } else {
+      setNoteTitle('')
+      setNoteDescription('')
+      setNoteUrl('')
+      await fetchData()
+    }
+    setCreatingNote(false)
   }
 
   const handleSaveGoals = async () => {
@@ -128,11 +148,11 @@ export default function SubjectDetailsPage({ params }: { params: Promise<{ route
   const handleSaveQuestions = async (e: React.FormEvent) => {
     e.preventDefault()
     setSavingQuest(true)
-    const { error } = await supabase.from('questions').insert([{ 
-      subject_id: subjectId, 
-      total_solved: Number(qTotal), 
-      total_correct: Number(qCorrect), 
-      total_wrong: Number(qWrong) 
+    const { error } = await supabase.from('questions').insert([{
+      subject_id: subjectId,
+      total_solved: Number(qTotal),
+      total_correct: Number(qCorrect),
+      total_wrong: Number(qWrong)
     }])
     
     if (error) {
@@ -143,6 +163,23 @@ export default function SubjectDetailsPage({ params }: { params: Promise<{ route
     }
     setSavingQuest(false)
   }
+
+  const getDisplayDate = (note: any) => {
+    const dateToFormat = note.updated_at || note.created_at
+    const isModified = !!note.updated_at
+    const formattedDate = new Date(dateToFormat).toLocaleDateString('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    })
+    return isModified ? `Modificado em ${formattedDate}` : `Criado em ${formattedDate}`
+  }
+
+  const tabList = [
+    { value: 'edital', label: 'Edital' },
+    { value: 'questoes', label: 'Questões' },
+    { value: 'anotacoes', label: 'Anotações' },
+    { value: 'metas', label: 'Metas' }
+  ]
 
   return (
     <div className="space-y-8">
@@ -165,8 +202,10 @@ export default function SubjectDetailsPage({ params }: { params: Promise<{ route
 
       <Tabs defaultValue="edital" className="w-full">
         <TabsList className="bg-zinc-900 border border-zinc-800 p-1">
-          {['edital', 'questoes', 'materiais', 'metas'].map((tab) => (
-            <TabsTrigger key={tab} value={tab} className="text-zinc-400 data-[state=active]:bg-[#192e5b] data-[state=active]:text-zinc-50 capitalize">{tab}</TabsTrigger>
+          {tabList.map((tab) => (
+            <TabsTrigger key={tab.value} value={tab.value} className="text-zinc-400 data-[state=active]:bg-[#192e5b] data-[state=active]:text-zinc-50 capitalize">
+              {tab.label}
+            </TabsTrigger>
           ))}
         </TabsList>
 
@@ -201,15 +240,45 @@ export default function SubjectDetailsPage({ params }: { params: Promise<{ route
             {topics.map(t => (
               <div key={t.id} className="p-4 flex items-center justify-between text-zinc-300">
                 <div className="flex items-center gap-3 cursor-pointer select-none" onClick={() => toggleTopicStatus(t)}>
-                    {t.status === 'CONCLUIDO' ? <CheckCircle2 className="text-emerald-500" /> : <Circle className="text-zinc-500" />}
-                    <span className={t.status === 'CONCLUIDO' ? 'text-zinc-500 line-through' : ''}>{t.title}</span>
+                  {t.status === 'CONCLUIDO' ? <CheckCircle2 className="text-emerald-500" /> : <Circle className="text-zinc-500" />}
+                  <span className={t.status === 'CONCLUIDO' ? 'text-zinc-500 line-through' : ''}>{t.title}</span>
                 </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-red-500" onClick={() => handleDelete('topics', t.id)}>
+                
+                <div className="flex gap-2">
+                  <Dialog>
+                    <DialogTrigger>
+                      <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white hover:bg-zinc-800">Detalhes</Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-zinc-900 border-zinc-800 text-zinc-100">
+                      <DialogHeader><DialogTitle>{t.title}</DialogTitle></DialogHeader>
+                      <div className="space-y-4 pt-4">
+                        <p><span className="text-zinc-500">Nivel:</span> {t.difficulty}</p>
+                        <p><span className="text-zinc-500">Status:</span> {t.status}</p>
+                        <div className="p-4 bg-zinc-950 rounded-md border border-zinc-800 min-h-[100px]">
+                          <p className="text-sm text-zinc-300">{t.description || "Sem descricao."}</p>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
+                  <Dialog>
+                    <DialogTrigger>
+                      <Button variant="outline" size="sm" className="border-zinc-700 bg-zinc-800 hover:bg-zinc-700">Editar</Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-zinc-900 border-zinc-800 text-zinc-100">
+                      <DialogHeader><DialogTitle>Editar Assunto</DialogTitle></DialogHeader>
+                      <EditTopicForm topic={t} onSave={fetchData} />
+                    </DialogContent>
+                  </Dialog>
+
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-red-500" onClick={() => handleDelete('topics', t.id)}>
                     <Trash2 className="h-4 w-4" />
-                </Button>
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
+          
         </TabsContent>
 
         <TabsContent value="questoes" className="mt-6 space-y-6">
@@ -238,25 +307,56 @@ export default function SubjectDetailsPage({ params }: { params: Promise<{ route
           </div>
         </TabsContent>
 
-        <TabsContent value="materiais" className="mt-6 space-y-4">
+        <TabsContent value="anotacoes" className="mt-6 space-y-4">
           <Card className="border-zinc-800 bg-zinc-900 p-6">
-            <form onSubmit={handleCreateMaterial} className="space-y-4">
-              <Input placeholder="Título" value={materialTitle} onChange={e => setMaterialTitle(e.target.value)} className="bg-zinc-800 border-zinc-700 text-zinc-100" />
-              <Input placeholder="URL" value={materialUrl} onChange={e => setMaterialUrl(e.target.value)} className="bg-zinc-800 border-zinc-700 text-zinc-100" />
-              <Button type="submit" disabled={creatingMaterial} className="bg-[#ff5f3a]">Salvar Material</Button>
+            <div className="mb-4">
+              <h3 className="text-lg font-medium text-zinc-100">Nova Anotação</h3>
+              <p className="text-sm text-zinc-400">Adicione resumos, tópicos ou links úteis.</p>
+            </div>
+            <form onSubmit={handleCreateNote} className="space-y-4">
+              <Input placeholder="Título da anotação..." required value={noteTitle} onChange={e => setNoteTitle(e.target.value)} className="bg-zinc-800 border-zinc-700 text-zinc-100" />
+              <textarea placeholder="Digite suas anotações aqui..." required value={noteDescription} onChange={(e) => setNoteDescription(e.target.value)} className="flex min-h-[120px] w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#192e5b] resize-y" />
+              <Input type="url" placeholder="URL / Link de Apoio (Opcional)" value={noteUrl} onChange={e => setNoteUrl(e.target.value)} className="bg-zinc-800 border-zinc-700 text-zinc-100" />
+              <Button type="submit" disabled={creatingNote} className="bg-[#ff5f3a]">
+                {creatingNote ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                Salvar Anotação
+              </Button>
             </form>
           </Card>
-          {materials.map(m => (
-            <div key={m.id} className="p-4 border border-zinc-800 bg-zinc-900 rounded-lg flex justify-between items-center text-zinc-300">
-              <div className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4" /> {m.file_name}
-                {m.file_url && <a href={m.file_url} target="_blank" className="text-[#ff5f3a] ml-2"><ExternalLink className="h-4 w-4" /></a>}
-              </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-red-500" onClick={() => handleDelete('documents', m.id)}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
+          {notes.length === 0 ? (
+            <p className="text-zinc-500 text-sm italic text-center pt-4">Nenhuma anotação criada ainda.</p>
+          ) : (
+            <div className="grid gap-4 mt-6">
+              {notes.map(note => (
+                <Card key={note.id} className="border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 transition-colors p-5 flex flex-col gap-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="text-lg font-semibold text-zinc-100 flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-[#192e5b]" /> {note.title}
+                      </h4>
+                      <p className="text-xs text-zinc-500 mt-1 flex items-center gap-1">
+                        <Calendar className="h-3 w-3" /> {getDisplayDate(note)}
+                      </p>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-red-500 -mt-1 -mr-1" onClick={() => handleDelete('notes', note.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="text-sm text-zinc-300 whitespace-pre-wrap leading-relaxed">
+                    {note.description}
+                  </div>
+                  {note.url && (
+                    <div className="pt-3 border-t border-zinc-800/60 mt-1">
+                      <a href={note.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-sm text-[#ff5f3a] hover:text-[#ff5f3a]/80">
+                        <LinkIcon className="h-3 w-3 mr-1.5" />
+                        Acessar Material Anexo
+                      </a>
+                    </div>
+                  )}
+                </Card>
+              ))}
             </div>
-          ))}
+          )}
         </TabsContent>
 
         <TabsContent value="metas" className="mt-6 space-y-6">
@@ -284,4 +384,47 @@ export default function SubjectDetailsPage({ params }: { params: Promise<{ route
       </Tabs>
     </div>
   )
+
+  function EditTopicForm({ topic, onSave }: { topic: any, onSave: () => void }) {
+  const [desc, setDesc] = useState(topic.description || '')
+  const [diff, setDiff] = useState(topic.difficulty)
+  const [stat, setStat] = useState(topic.status)
+
+  const handleUpdate = async () => {
+    await supabase.from('topics').update({ 
+      description: desc, 
+      difficulty: diff, 
+      status: stat 
+    }).eq('id', topic.id)
+    onSave()
+  }
+
+  return (
+    <div className="space-y-4 pt-4">
+      <textarea 
+        className="w-full bg-zinc-800 border border-zinc-700 p-2 rounded text-zinc-100 min-h-[100px]" 
+        placeholder="Descrição do assunto..." 
+        value={desc} 
+        onChange={(e) => setDesc(e.target.value)} 
+      />
+      <Select value={diff} onValueChange={setDiff}>
+        <SelectTrigger className="bg-zinc-800 border-zinc-700"><SelectValue /></SelectTrigger>
+        <SelectContent className="bg-zinc-800 border-zinc-700">
+            <SelectItem value="FACIL">Fácil</SelectItem>
+            <SelectItem value="MEDIO">Médio</SelectItem>
+            <SelectItem value="DIFICIL">Difícil</SelectItem>
+        </SelectContent>
+      </Select>
+      <Select value={stat} onValueChange={setStat}>
+        <SelectTrigger className="bg-zinc-800 border-zinc-700"><SelectValue /></SelectTrigger>
+        <SelectContent className="bg-zinc-800 border-zinc-700">
+            <SelectItem value="A_ESTUDAR">A Estudar</SelectItem>
+            <SelectItem value="ESTUDANDO">Estudando</SelectItem>
+            <SelectItem value="CONCLUIDO">Concluído</SelectItem>
+        </SelectContent>
+      </Select>
+      <Button onClick={handleUpdate} className="w-full bg-[#ff5f3a]">Salvar Alterações</Button>
+    </div>
+  )
+}
 }

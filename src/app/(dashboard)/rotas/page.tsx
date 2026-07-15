@@ -6,12 +6,15 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus, Folder, ArrowRight, Loader2 } from 'lucide-react'
+import { Plus, Folder, ArrowRight, Loader2, Trash2, CheckCircle, Circle } from 'lucide-react'
 
+// 1. Atualizamos a tipagem para incluir os novos campos
 interface Route {
   id: string
   name: string
   created_at: string
+  updated_at?: string
+  is_completed?: boolean
 }
 
 export default function RotasPage() {
@@ -62,6 +65,58 @@ export default function RotasPage() {
       }
     }
     setCreating(false)
+  }
+
+  // --- FUNÇÃO ATUALIZADA COM ALERTAS DE INVESTIGAÇÃO ---
+  const handleDeleteRoute = async (id: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir esta rota? Essa ação não pode ser desfeita.')) return
+
+    const { data, error } = await supabase
+      .from('study_routes')
+      .delete()
+      .eq('id', id)
+      .select() // Força o Supabase a retornar os dados da linha que foi deletada
+
+    if (error) {
+      console.error('Erro detalhado Supabase:', error)
+      alert(`O banco de dados bloqueou a exclusão!\nMotivo: ${error.message}`)
+      return
+    }
+
+    if (!data || data.length === 0) {
+      alert('Nenhuma rota foi excluída no banco! O Supabase bloqueou silenciosamente (Provavelmente falta de política RLS de DELETE na tabela study_routes).')
+      return
+    }
+
+    // Se chegou aqui, deletou de verdade no banco.
+    setRoutes(routes.filter(route => route.id !== id))
+    alert('Rota excluída com sucesso no banco de dados!')
+  }
+
+  // 3. Função para alternar o status de conclusão
+  const handleToggleComplete = async (id: string, currentStatus: boolean | undefined) => {
+    const newStatus = !currentStatus
+    const { error } = await supabase
+      .from('study_routes')
+      .update({ is_completed: newStatus })
+      .eq('id', id)
+
+    if (!error) {
+      // Atualiza o estado local para refletir a mudança instantaneamente
+      setRoutes(routes.map(route => 
+        route.id === id ? { ...route, is_completed: newStatus, updated_at: new Date().toISOString() } : route
+      ))
+    } else {
+      console.error('Erro ao atualizar status:', error.message)
+    }
+  }
+
+  // 4. Lógica de exibição da data
+  const getDisplayDate = (route: Route) => {
+    const dateToFormat = route.updated_at || route.created_at
+    const prefix = route.updated_at ? 'Modificado em' : 'Criado em'
+    const formattedDate = new Date(dateToFormat).toLocaleDateString('pt-BR')
+    return `${prefix}: ${formattedDate}`
   }
 
   return (
@@ -116,16 +171,53 @@ export default function RotasPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {routes.map((route) => (
-              <Card key={route.id} className="border-zinc-800 bg-zinc-900/40 hover:border-[#192e5b] transition-all text-zinc-50 flex flex-col justify-between">
-                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
-                  <div className="flex items-center gap-3">
+              <Card 
+                key={route.id} 
+                // Adiciona um efeito visual de opacidade se estiver concluído
+                className={`border-zinc-800 bg-zinc-900/40 hover:border-[#192e5b] transition-all text-zinc-50 flex flex-col justify-between ${route.is_completed ? 'opacity-60 grayscale-[0.3]' : ''}`}
+              >
+                <CardHeader className="flex flex-col items-start justify-between space-y-2 pb-4">
+                  <div className="flex items-center gap-3 w-full">
                     <div className="p-2 bg-[#192e5b]/20 rounded-lg text-[#192e5b] border border-[#192e5b]/30">
                       <Folder className="h-5 w-5" />
                     </div>
-                    <CardTitle className="text-base font-semibold tracking-tight">{route.name}</CardTitle>
+                    <CardTitle className={`text-base font-semibold tracking-tight ${route.is_completed ? 'line-through text-zinc-400' : ''}`}>
+                      {route.name}
+                    </CardTitle>
                   </div>
+                  {/* Exibição Inteligente da Data */}
+                  <span className="text-xs text-zinc-500 font-medium">
+                    {getDisplayDate(route)}
+                  </span>
                 </CardHeader>
-                <CardContent className="flex justify-end border-t border-zinc-800/60 pt-3">
+
+                <CardContent className="flex items-center justify-between border-t border-zinc-800/60 pt-3">
+                  <div className="flex gap-1">
+                    {/* Botão de Concluir */}
+                    <Button 
+                      type="button"
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleToggleComplete(route.id, route.is_completed)}
+                      className={`h-8 w-8 hover:bg-zinc-800 ${route.is_completed ? 'text-emerald-500 hover:text-emerald-400' : 'text-zinc-500 hover:text-emerald-500'}`}
+                      title={route.is_completed ? "Desmarcar conclusão" : "Marcar como concluído"}
+                    >
+                      {route.is_completed ? <CheckCircle className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
+                    </Button>
+                    
+                    {/* Botão de Excluir */}
+                    <Button 
+                      type="button"
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleDeleteRoute(route.id)}
+                      className="h-8 w-8 text-zinc-500 hover:text-red-500 hover:bg-zinc-800"
+                      title="Excluir rota"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+
                   <Link href={`/rotas/${route.id}`}>
                     <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-[#ff5f3a] gap-1 hover:bg-zinc-800">
                       Acessar Rota <ArrowRight className="h-4 w-4" />
