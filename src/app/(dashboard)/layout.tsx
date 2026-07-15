@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { LayoutDashboard, Compass, LogOut, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Compass, LogOut, Menu, X, Calendar } from 'lucide-react'
 
 export default function DashboardLayout({
   children,
@@ -28,6 +28,7 @@ export default function DashboardLayout({
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Minhas Rotas', href: '/rotas', icon: Compass },
+    {name: 'Agenda', href: '/agenda', icon: Calendar}
   ]
 
   return (
