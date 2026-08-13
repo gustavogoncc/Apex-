@@ -1,26 +1,40 @@
-import { Inter } from 'next/font/google'
-import './globals.css'
+import type { Metadata } from "next";
+import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 
-const inter = Inter({ subsets: ['latin'] })
+import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-heading",
+  display: "swap",
+});
+
+export const metadata: Metadata = {
+  title: "Apex Studies",
+  description:
+    "Plataforma inteligente para organização e alta performance nos estudos.",
+};
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="pt-br" className={`${inter.className} dark`}>
-      <body className="bg-zinc-950 text-zinc-50 min-h-screen">
-        {/* 
-          Container global:
-          - mx-auto: centraliza o conteúdo.
-          - max-w-7xl: limita a largura máxima em telas grandes.
-          - px-4 md:px-6: dá um respiro lateral, que aumenta em telas maiores.
-        */}
-        <main className="mx-auto w-full max-w-7xl px-4 md:px-6">
-          {children}
-        </main>
+    <html
+      lang="pt-BR"
+      suppressHydrationWarning
+      className={`${inter.variable} ${jakarta.variable} dark`}
+    >
+      <body className="min-h-screen bg-background font-sans text-foreground antialiased">
+        {children}
       </body>
     </html>
-  )
+  );
 }

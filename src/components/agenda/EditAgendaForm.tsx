@@ -1,109 +1,376 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { supabase } from "@/lib/supabase"
+import { useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+import { supabase } from "@/lib/supabase";
+
+/* -------------------------------------------------------------------------- */
+/* TYPES                                                                      */
+/* -------------------------------------------------------------------------- */
 
 interface AgendaItem {
-  id: string
-  title: string
-  description: string | null
-  start_time: string
-  end_time: string
-  completed: boolean
+  id: string;
+  title: string;
+  description: string | null;
+  start_time: string;
+  end_time: string;
+  completed: boolean;
 }
 
-export function EditAgendaForm({ 
-  event, 
-  onSuccess 
-}: { 
-  event: AgendaItem
-  onSuccess: () => void 
-}) {
-  const [loading, setLoading] = useState(false)
+interface EditAgendaFormProps {
+  event: AgendaItem;
+  onSuccess: () => void;
+}
 
-  // Converte string ISO do Supabase de forma segura para o input datetime-local do navegador
-  const formatToLocalDatetime = (isoString: string) => {
-    const date = new Date(isoString)
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const hours = String(date.getHours()).padStart(2, '0')
-    const minutes = String(date.getMinutes()).padStart(2, '0')
-    return `${year}-${month}-${day}T${hours}:${minutes}`
-  }
+/* -------------------------------------------------------------------------- */
+/* DATE HELPERS                                                               */
+/* -------------------------------------------------------------------------- */
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setLoading(true)
-    const formData = new FormData(e.currentTarget)
+function formatToLocalDatetime(
+  isoString: string
+): string {
+  const date = new Date(isoString);
 
-    const { error } = await supabase
-      .from("agenda")
-      .update({
-        title: formData.get("title") as string,
-        description: formData.get("description") as string,
-        start_time: formData.get("start_time") as string,
-        end_time: formData.get("end_time") as string,
-      })
-      .eq("id", event.id)
+  const year =
+    date.getFullYear();
 
-    if (!error) {
-      onSuccess()
-    } else {
-      console.error("Erro ao atualizar compromisso:", error)
+  const month =
+    String(date.getMonth() + 1).padStart(
+      2,
+      "0"
+    );
+
+  const day =
+    String(date.getDate()).padStart(
+      2,
+      "0"
+    );
+
+  const hours =
+    String(date.getHours()).padStart(
+      2,
+      "0"
+    );
+
+  const minutes =
+    String(date.getMinutes()).padStart(
+      2,
+      "0"
+    );
+
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function localDateTimeToISOString(
+  value: string
+): string {
+  return new Date(value).toISOString();
+}
+
+/* -------------------------------------------------------------------------- */
+/* COMPONENT                                                                  */
+/* -------------------------------------------------------------------------- */
+
+export function EditAgendaForm({
+  event,
+  onSuccess,
+}: EditAgendaFormProps) {
+  const [loading, setLoading] =
+    useState(false);
+
+  const [errorMessage, setErrorMessage] =
+    useState<string | null>(null);
+
+  /* ------------------------------------------------------------------------ */
+  /* SUBMIT                                                                   */
+  /* ------------------------------------------------------------------------ */
+
+  async function handleSubmit(
+    formEvent: React.FormEvent<HTMLFormElement>
+  ) {
+    formEvent.preventDefault();
+
+    setLoading(true);
+    setErrorMessage(null);
+
+    const formData =
+      new FormData(
+        formEvent.currentTarget
+      );
+
+    const title =
+      String(
+        formData.get("title") ?? ""
+      ).trim();
+
+    const description =
+      String(
+        formData.get("description") ?? ""
+      ).trim();
+
+    const startTime =
+      String(
+        formData.get("start_time") ?? ""
+      );
+
+    const endTime =
+      String(
+        formData.get("end_time") ?? ""
+      );
+
+    try {
+      /* -------------------------------------------------------------------- */
+      /* VALIDATION                                                            */
+      /* -------------------------------------------------------------------- */
+
+      if (!title) {
+        setErrorMessage(
+          "Informe um título para o compromisso."
+        );
+
+        return;
+      }
+
+      if (
+        !startTime ||
+        !endTime
+      ) {
+        setErrorMessage(
+          "Informe a data e o horário de início e término."
+        );
+
+        return;
+      }
+
+      const startDate =
+        new Date(startTime);
+
+      const endDate =
+        new Date(endTime);
+
+      if (
+        Number.isNaN(
+          startDate.getTime()
+        ) ||
+        Number.isNaN(
+          endDate.getTime()
+        )
+      ) {
+        setErrorMessage(
+          "Informe uma data e horário válidos."
+        );
+
+        return;
+      }
+
+      if (
+        endDate <= startDate
+      ) {
+        setErrorMessage(
+          "O horário de término deve ser posterior ao início."
+        );
+
+        return;
+      }
+
+      /* -------------------------------------------------------------------- */
+      /* UPDATE                                                               */
+      /* -------------------------------------------------------------------- */
+
+      const {
+        error,
+      } = await supabase
+        .from("agenda")
+        .update({
+          title,
+
+          description:
+            description || null,
+
+          start_time:
+            localDateTimeToISOString(
+              startTime
+            ),
+
+          end_time:
+            localDateTimeToISOString(
+              endTime
+            ),
+        })
+        .eq(
+          "id",
+          event.id
+        );
+
+      if (error) {
+        console.error(
+          "Erro ao atualizar compromisso:",
+          error
+        );
+
+        setErrorMessage(
+          "Não foi possível atualizar o compromisso. Tente novamente."
+        );
+
+        return;
+      }
+
+      onSuccess();
+    } catch (error) {
+      console.error(
+        "Erro inesperado ao atualizar compromisso:",
+        error
+      );
+
+      setErrorMessage(
+        "Ocorreu um erro inesperado. Tente novamente."
+      );
+    } finally {
+      setLoading(false);
     }
-    setLoading(false)
   }
+
+  /* ------------------------------------------------------------------------ */
+  /* RENDER                                                                   */
+  /* ------------------------------------------------------------------------ */
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <Input 
-        name="title" 
-        defaultValue={event.title}
-        placeholder="Título do compromisso" 
-        required 
-        className="bg-zinc-950 border-zinc-800 text-zinc-100"
-      />
-      
-      <textarea
-        name="description"
-        defaultValue={event.description || ""}
-        placeholder="Descrição (opcional)"
-        className="flex min-h-[80px] w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-      />
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-6"
+    >
+      {/* ------------------------------------------------------------------ */}
+      {/* TITLE                                                              */}
+      {/* ------------------------------------------------------------------ */}
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-zinc-400">Início</label>
-          <Input 
-            type="datetime-local" 
-            name="start_time" 
-            defaultValue={formatToLocalDatetime(event.start_time)}
-            required 
-            className="bg-zinc-950 border-zinc-800 text-zinc-100 [color-scheme:dark]" 
+      <div className="space-y-2">
+        <label
+          htmlFor="agenda-edit-title"
+          className="text-sm font-medium"
+        >
+          Título
+        </label>
+
+        <Input
+          id="agenda-edit-title"
+          name="title"
+          defaultValue={event.title}
+          placeholder="Ex.: Revisar Direito Constitucional"
+          required
+        />
+      </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* DESCRIPTION                                                        */}
+      {/* ------------------------------------------------------------------ */}
+
+      <div className="space-y-2">
+        <label
+          htmlFor="agenda-edit-description"
+          className="text-sm font-medium"
+        >
+          Descrição
+        </label>
+
+        <textarea
+          id="agenda-edit-description"
+          name="description"
+          defaultValue={
+            event.description ?? ""
+          }
+          placeholder="Adicione uma observação sobre este compromisso..."
+          className="
+            flex
+            min-h-24
+            w-full
+            resize-none
+            rounded-xl
+            border
+            border-border
+            bg-background
+            px-3
+            py-2.5
+            text-sm
+            outline-none
+            placeholder:text-muted-foreground
+            focus-visible:ring-2
+            focus-visible:ring-primary
+            focus-visible:ring-offset-2
+            focus-visible:ring-offset-background
+          "
+        />
+      </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* DATE / TIME                                                        */}
+      {/* ------------------------------------------------------------------ */}
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <label
+            htmlFor="agenda-edit-start"
+            className="text-sm font-medium"
+          >
+            Início
+          </label>
+
+          <Input
+            id="agenda-edit-start"
+            type="datetime-local"
+            name="start_time"
+            defaultValue={formatToLocalDatetime(
+              event.start_time
+            )}
+            required
           />
         </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-zinc-400">Fim</label>
-          <Input 
-            type="datetime-local" 
-            name="end_time" 
-            defaultValue={formatToLocalDatetime(event.end_time)}
-            required 
-            className="bg-zinc-950 border-zinc-800 text-zinc-100 [color-scheme:dark]" 
+
+        <div className="space-y-2">
+          <label
+            htmlFor="agenda-edit-end"
+            className="text-sm font-medium"
+          >
+            Término
+          </label>
+
+          <Input
+            id="agenda-edit-end"
+            type="datetime-local"
+            name="end_time"
+            defaultValue={formatToLocalDatetime(
+              event.end_time
+            )}
+            required
           />
         </div>
       </div>
 
-      <Button 
-        type="submit" 
-        className="w-full bg-[#ff5f3a] hover:bg-[#e65535] text-white" 
+      {/* ------------------------------------------------------------------ */}
+      {/* ERROR                                                              */}
+      {/* ------------------------------------------------------------------ */}
+
+      {errorMessage && (
+        <p className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {errorMessage}
+        </p>
+      )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* ACTION                                                             */}
+      {/* ------------------------------------------------------------------ */}
+
+      <Button
+        type="submit"
+        className="w-full"
         disabled={loading}
       >
-        {loading ? "Salvando..." : "Salvar Alterações"}
+        {loading
+          ? "Salvando..."
+          : "Salvar alterações"}
       </Button>
     </form>
-  )
+  );
 }

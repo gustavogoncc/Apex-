@@ -1,151 +1,459 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import Image from 'next/image'
-import { supabase } from '@/lib/supabase'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
-import { Loader2, Lock, Mail, ArrowRight } from 'lucide-react'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+
+import {
+  ArrowRight,
+  Loader2,
+  Lock,
+  LogIn,
+  Mail,
+} from "lucide-react";
+
+import { supabase } from "@/lib/supabase";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+} from "@/components/ui/card";
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [errorMsg, setErrorMsg] = useState('')
+  const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setErrorMsg('')
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+  const [loading, setLoading] =
+    useState(false);
+
+  const [errorMsg, setErrorMsg] =
+    useState("");
+
+  async function handleLogin(
+    e: React.FormEvent
+  ) {
+    e.preventDefault();
+
+    setLoading(true);
+    setErrorMsg("");
+
+    const { error } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
     if (error) {
-      if (error.message === 'Invalid login credentials') {
-        setErrorMsg('E-mail ou senha incorretos.')
+      if (
+        error.message ===
+        "Invalid login credentials"
+      ) {
+        setErrorMsg(
+          "E-mail ou senha incorretos."
+        );
       } else {
-        setErrorMsg(error.message)
+        setErrorMsg(error.message);
       }
-      setLoading(false)
+
+      setLoading(false);
     } else {
-      router.push('/dashboard')
+      router.push("/dashboard");
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-950 p-4 relative overflow-hidden">
-      {/* Detalhes de gradiente de fundo para dar profundidade de forma elegante */}
-      <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-[#192e5b]/10 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full bg-[#ff5f3a]/5 blur-[120px] pointer-events-none" />
+    <main
+      className="
+        relative
+        flex
+        min-h-screen
+        items-center
+        justify-center
+        overflow-hidden
+        bg-background
+        px-4
+        py-10
+      "
+    >
+      {/* ------------------------------------------------------------------ */}
+      {/* BACKGROUND                                                          */}
+      {/* ------------------------------------------------------------------ */}
 
-      <Card className="w-full max-w-md border-zinc-800 bg-zinc-900/50 backdrop-blur-md text-zinc-50 shadow-2xl relative z-10">
-        <CardHeader className="space-y-4 text-center pb-4 flex flex-col items-center">
-          {/* Logo Oficial */}
-          <div className="relative w-48 h-16 flex items-center justify-center">
-            <Image 
-              src="/img/APEX.png" 
-              alt="APEX Study" 
-              width={100} 
-              height={64} 
+      <div
+        aria-hidden="true"
+        className="
+          pointer-events-none
+          absolute
+          -left-32
+          -top-32
+          size-[420px]
+          rounded-full
+          bg-primary/8
+          blur-[120px]
+        "
+      />
+
+      <div
+        aria-hidden="true"
+        className="
+          pointer-events-none
+          absolute
+          -bottom-40
+          -right-32
+          size-[420px]
+          rounded-full
+          bg-primary/5
+          blur-[120px]
+        "
+      />
+
+      <div
+        aria-hidden="true"
+        className="
+          pointer-events-none
+          absolute
+          inset-0
+          bg-[radial-gradient(circle_at_center,transparent_0%,hsl(var(--background))_75%)]
+        "
+      />
+
+      {/* ------------------------------------------------------------------ */}
+      {/* CARD                                                                */}
+      {/* ------------------------------------------------------------------ */}
+
+      <Card
+        className="
+          relative
+          z-10
+          w-full
+          max-w-md
+          overflow-hidden
+          border-border/70
+          bg-card/95
+          shadow-2xl
+          backdrop-blur-xl
+        "
+      >
+        {/* ---------------------------------------------------------------- */}
+        {/* HEADER                                                            */}
+        {/* ---------------------------------------------------------------- */}
+
+        <CardHeader
+          className="
+            flex
+            flex-col
+            items-center
+            space-y-0
+            px-6
+            pb-5
+            pt-9
+            text-center
+            sm:px-8
+            sm:pt-10
+          "
+        >
+          {/* Logo */}
+
+          <div
+            className="
+              flex
+              h-16
+              w-full
+              items-center
+              justify-center
+            "
+          >
+            <Image
+              src="/img/APEX.png"
+              alt="APEX Studies"
+              width={130}
+              height={60}
               priority
-              className="object-contain"
+              className="
+                h-auto
+                w-auto
+                max-h-14
+                object-contain
+              "
             />
           </div>
-          <CardDescription className="text-zinc-400 text-sm max-w-[280px]">
-            Insira suas credenciais para acessar sua rota de estudos
-          </CardDescription>
+
+          {/* Title */}
+
+          <div className="mt-7 space-y-2">
+            <h1
+              className="
+                text-2xl
+                font-bold
+                tracking-tight
+                sm:text-3xl
+              "
+            >
+              Bem-vindo de volta
+            </h1>
+
+            <CardDescription
+              className="
+                mx-auto
+                max-w-[300px]
+                text-sm
+                leading-6
+              "
+            >
+              Entre na sua conta para
+              continuar sua jornada de
+              estudos.
+            </CardDescription>
+          </div>
         </CardHeader>
-        
-        <CardContent className="space-y-4">
-          <form onSubmit={handleLogin} className="space-y-4">
-            
-            {/* Campo E-mail */}
+
+        {/* ---------------------------------------------------------------- */}
+        {/* CONTENT                                                           */}
+        {/* ---------------------------------------------------------------- */}
+
+        <CardContent
+          className="
+            space-y-6
+            px-6
+            pb-8
+            sm:px-8
+            sm:pb-10
+          "
+        >
+          <form
+            onSubmit={handleLogin}
+            className="space-y-5"
+          >
+            {/* ------------------------------------------------------------ */}
+            {/* E-MAIL                                                        */}
+            {/* ------------------------------------------------------------ */}
+
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+              <label
+                htmlFor="email"
+                className="
+                  text-sm
+                  font-medium
+                  text-foreground
+                "
+              >
                 E-mail
               </label>
+
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                <Mail
+                  aria-hidden="true"
+                  className="
+                    pointer-events-none
+                    absolute
+                    left-3.5
+                    top-1/2
+                    size-4
+                    -translate-y-1/2
+                    text-muted-foreground
+                  "
+                />
+
                 <Input
+                  id="email"
                   type="email"
+                  name="email"
                   placeholder="seu@email.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 border-zinc-800 bg-zinc-950 text-zinc-100 placeholder-zinc-600 focus-visible:ring-1 focus-visible:ring-[#ff5f3a] transition-all"
+                  onChange={(e) =>
+                    setEmail(e.target.value)
+                  }
+                  autoComplete="email"
                   required
-                />
-              </div>
-            </div>
-            
-            {/* Campo Senha */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                  Senha
-                </label>
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-                <Input
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 border-zinc-800 bg-zinc-950 text-zinc-100 placeholder-zinc-600 focus-visible:ring-1 focus-visible:ring-[#ff5f3a] transition-all"
-                  required
+                  className="
+                    h-11
+                    rounded-xl
+                    border-border
+                    bg-background
+                    pl-10
+                    transition-all
+                    focus-visible:border-primary
+                    focus-visible:ring-2
+                    focus-visible:ring-primary/20
+                  "
                 />
               </div>
             </div>
 
-            {/* Alerta de Erro */}
+            {/* ------------------------------------------------------------ */}
+            {/* SENHA                                                         */}
+            {/* ------------------------------------------------------------ */}
+
+            <div className="space-y-2">
+              <label
+                htmlFor="password"
+                className="
+                  text-sm
+                  font-medium
+                  text-foreground
+                "
+              >
+                Senha
+              </label>
+
+              <div className="relative">
+                <Lock
+                  aria-hidden="true"
+                  className="
+                    pointer-events-none
+                    absolute
+                    left-3.5
+                    top-1/2
+                    size-4
+                    -translate-y-1/2
+                    text-muted-foreground
+                  "
+                />
+
+                <Input
+                  id="password"
+                  type="password"
+                  name="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) =>
+                    setPassword(e.target.value)
+                  }
+                  autoComplete="current-password"
+                  required
+                  className="
+                    h-11
+                    rounded-xl
+                    border-border
+                    bg-background
+                    pl-10
+                    transition-all
+                    focus-visible:border-primary
+                    focus-visible:ring-2
+                    focus-visible:ring-primary/20
+                  "
+                />
+              </div>
+            </div>
+
+            {/* ------------------------------------------------------------ */}
+            {/* ERROR                                                         */}
+            {/* ------------------------------------------------------------ */}
+
             {errorMsg && (
-              <div className="text-sm text-red-400 text-center font-medium bg-red-950/20 py-2.5 px-3 rounded-lg border border-red-900/30 transition-all">
+              <div
+                role="alert"
+                className="
+                  rounded-xl
+                  border
+                  border-destructive/20
+                  bg-destructive/5
+                  px-4
+                  py-3
+                  text-sm
+                  leading-5
+                  text-destructive
+                "
+              >
                 {errorMsg}
               </div>
             )}
 
-            {/* Botão de Submit */}
-            <Button 
-              type="submit" 
-              className="w-full bg-[#ff5f3a] text-white hover:bg-[#ff5f3a]/90 font-medium h-10 transition-colors shadow-lg shadow-[#ff5f3a]/10"
+            {/* ------------------------------------------------------------ */}
+            {/* SUBMIT                                                        */}
+            {/* ------------------------------------------------------------ */}
+
+            <Button
+              type="submit"
+              size="lg"
+              className="
+                h-12
+                w-full
+                rounded-xl
+              "
               disabled={loading}
             >
               {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Entrando...
-                </span>
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Entrando...
+                </>
               ) : (
-                'Entrar'
+                <>
+                  <LogIn className="size-4" />
+
+                  Entrar
+
+                  <ArrowRight className="ml-auto size-4" />
+                </>
               )}
             </Button>
           </form>
 
-          {/* Divisor Visual */}
-          <div className="relative flex py-2 items-center">
-            <div className="flex-grow border-t border-zinc-800"></div>
-            <span className="flex-shrink mx-4 text-zinc-600 text-xs">ou</span>
-            <div className="flex-grow border-t border-zinc-800"></div>
+          {/* ---------------------------------------------------------------- */}
+          {/* DIVIDER                                                          */}
+          {/* ---------------------------------------------------------------- */}
+
+          <div className="flex items-center gap-4">
+            <div className="h-px flex-1 bg-border" />
+
+            <span
+              className="
+                text-xs
+                font-medium
+                uppercase
+                tracking-wider
+                text-muted-foreground
+              "
+            >
+              ou
+            </span>
+
+            <div className="h-px flex-1 bg-border" />
           </div>
 
-          {/* Link para criar conta */}
-          <p className="text-center text-sm text-zinc-400">
-            Ainda não tem conta?{' '}
-            <Link 
-              href="/cadastro" 
-              className="text-[#ff5f3a] hover:text-[#ff5f3a]/80 font-medium inline-flex items-center gap-0.5 hover:underline transition-all"
+          {/* ---------------------------------------------------------------- */}
+          {/* SIGN UP                                                           */}
+          {/* ---------------------------------------------------------------- */}
+
+          <p
+            className="
+              text-center
+              text-sm
+              text-muted-foreground
+            "
+          >
+            Ainda não tem conta?{" "}
+
+            <Link
+              href="/cadastro"
+              className="
+                inline-flex
+                items-center
+                gap-1
+                font-medium
+                text-primary
+                underline-offset-4
+                transition-colors
+                hover:text-primary/80
+                hover:underline
+              "
             >
-              Criar conta <ArrowRight className="h-3 w-3" />
+              Criar conta
+
+              <ArrowRight className="size-3.5" />
             </Link>
           </p>
         </CardContent>
       </Card>
-    </div>
-  )
+    </main>
+  );
 }

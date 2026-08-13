@@ -1,254 +1,1286 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { useState, useEffect } from "react"
-import { Trash2, Loader2, CheckCircle2, Circle, RefreshCw } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from "@/components/ui/dialog"
-import { CreateAgendaForm } from "@/components/agenda/CreateAgendaForm"
-import { EditAgendaForm } from "@/components/agenda/EditAgendaForm"
-import { supabase } from "@/lib/supabase"
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  CalendarDays,
+  CheckCircle2,
+  Circle,
+  Clock3,
+  Loader2,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
+
+import {
+  Button,
+} from "@/components/ui/button";
+
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+
+import {
+  Badge,
+} from "@/components/ui/badge";
+
+import {
+  CreateAgendaForm,
+} from "@/components/agenda/CreateAgendaForm";
+
+import {
+  EditAgendaForm,
+} from "@/components/agenda/EditAgendaForm";
+
+import { supabase } from "@/lib/supabase";
+
+import { cn } from "@/lib/utils";
+
+/* -------------------------------------------------------------------------- */
+/* TYPES                                                                      */
+/* -------------------------------------------------------------------------- */
 
 interface AgendaItem {
-  id: string
-  title: string
-  description: string | null
-  start_time: string
-  end_time: string
-  completed: boolean
+  id: string;
+
+  title: string;
+
+  description: string | null;
+
+  start_time: string;
+
+  end_time: string;
+
+  completed: boolean;
 }
 
-export default function AgendaPage() {
-  const [events, setEvents] = useState<AgendaItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [detailEvent, setDetailEvent] = useState<AgendaItem | null>(null)
-  const [editEvent, setEditEvent] = useState<AgendaItem | null>(null)
+/* -------------------------------------------------------------------------- */
+/* DATE HELPERS                                                               */
+/* -------------------------------------------------------------------------- */
 
-  // Busca os compromissos locais do Supabase
-  async function fetchEvents() {
-    try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from("agenda")
-        .select("id, title, description, start_time, end_time, completed")
-        .order("start_time", { ascending: true })
-
-      if (error) throw error
-      setEvents(data || [])
-    } catch (err) {
-      console.error("Erro ao carregar dados:", err)
-    } finally {
-      setLoading(false)
-    }
+function formatDate(
+  value: string
+): string {
+  if (!value) {
+    return "";
   }
 
-  useEffect(() => {
-    fetchEvents()
-  }, [])
-
-  // Altera o status de concluído
-  async function toggleComplete(id: string, currentStatus: boolean) {
-    const { error } = await supabase
-      .from("agenda")
-      .update({ completed: !currentStatus })
-      .eq("id", id)
-
-    if (!error) {
-      setEvents(prev => prev.map(ev => ev.id === id ? { ...ev, completed: !currentStatus } : ev))
-    } else {
-      console.error("Erro ao atualizar status:", error)
-    }
-  }
-
-  // Deleta compromisso
-  async function handleDelete(id: string) {
-    if (confirm("Deseja realmente excluir este compromisso?")) {
-      const { error } = await supabase
-        .from("agenda")
-        .delete()
-        .eq("id", id)
-
-      if (!error) {
-        fetchEvents()
-      } else {
-        console.error("Erro ao deletar compromisso:", error)
-      }
-    }
-  }
-
-  const formatDateTime = (isoString: string) => {
-    if (!isoString) return ""
-    const date = new Date(isoString)
-    return new Intl.DateTimeFormat("pt-BR", {
+  return new Intl.DateTimeFormat(
+    "pt-BR",
+    {
+      weekday: "long",
       day: "2-digit",
-      month: "2-digit",
+      month: "long",
       year: "numeric",
+    }
+  ).format(new Date(value));
+}
+
+function formatShortDate(
+  value: string
+): string {
+  if (!value) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat(
+    "pt-BR",
+    {
+      day: "2-digit",
+      month: "short",
+    }
+  )
+    .format(new Date(value))
+    .replace(".", "");
+}
+
+function formatTime(
+  value: string
+): string {
+  if (!value) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat(
+    "pt-BR",
+    {
       hour: "2-digit",
       minute: "2-digit",
-    }).format(date)
-  }
+    }
+  ).format(new Date(value));
+}
+
+function isToday(
+  value: string
+): boolean {
+  const date =
+    new Date(value);
+
+  const today =
+    new Date();
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-zinc-100">Agenda</h1>
-        
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger render={<Button className="bg-[#ff5f3a] hover:bg-[#e65535] text-white" />}>
-            Novo Compromisso
-          </DialogTrigger>
-          
-          <DialogContent className="bg-zinc-900 border-zinc-800 text-zinc-100 max-w-md">
+    date.getDate() ===
+      today.getDate() &&
+    date.getMonth() ===
+      today.getMonth() &&
+    date.getFullYear() ===
+      today.getFullYear()
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* PAGE                                                                       */
+/* -------------------------------------------------------------------------- */
+
+export default function AgendaPage() {
+  const [
+    events,
+    setEvents,
+  ] = useState<AgendaItem[]>([]);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  const [
+    refreshing,
+    setRefreshing,
+  ] = useState(false);
+
+  const [
+    isCreateOpen,
+    setIsCreateOpen,
+  ] = useState(false);
+
+  const [
+    detailEvent,
+    setDetailEvent,
+  ] = useState<AgendaItem | null>(
+    null
+  );
+
+  const [
+    editEvent,
+    setEditEvent,
+  ] = useState<AgendaItem | null>(
+    null
+  );
+
+  /* ------------------------------------------------------------------------ */
+  /* FETCH EVENTS                                                             */
+  /* ------------------------------------------------------------------------ */
+
+  async function fetchEvents(
+    showRefresh = false
+  ) {
+    try {
+      if (showRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      const {
+        data: {
+          user,
+        },
+        error: userError,
+      } =
+        await supabase.auth.getUser();
+
+      if (
+        userError ||
+        !user
+      ) {
+        console.error(
+          "Erro ao identificar usuário:",
+          userError
+        );
+
+        setEvents([]);
+
+        return;
+      }
+
+      const {
+        data,
+        error,
+      } =
+        await supabase
+          .from("agenda")
+          .select(
+            `
+              id,
+              title,
+              description,
+              start_time,
+              end_time,
+              completed
+            `
+          )
+          .eq(
+            "user_id",
+            user.id
+          )
+          .order(
+            "start_time",
+            {
+              ascending: true,
+            }
+          );
+
+      if (error) {
+        throw error;
+      }
+
+      setEvents(
+        data ?? []
+      );
+    } catch (error) {
+      console.error(
+        "Erro ao carregar agenda:",
+        error
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
+
+  /* ------------------------------------------------------------------------ */
+  /* INITIAL LOAD                                                             */
+  /* ------------------------------------------------------------------------ */
+
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  /* ------------------------------------------------------------------------ */
+  /* TOGGLE COMPLETE                                                          */
+  /* ------------------------------------------------------------------------ */
+
+  async function toggleComplete(
+    id: string,
+    currentStatus: boolean
+  ) {
+    const newStatus =
+      !currentStatus;
+
+    const {
+      error,
+    } =
+      await supabase
+        .from("agenda")
+        .update({
+          completed: newStatus,
+        })
+        .eq(
+          "id",
+          id
+        );
+
+    if (error) {
+      console.error(
+        "Erro ao atualizar status:",
+        error
+      );
+
+      return;
+    }
+
+    setEvents(
+      (current) =>
+        current.map(
+          (event) =>
+            event.id === id
+              ? {
+                  ...event,
+                  completed:
+                    newStatus,
+                }
+              : event
+        )
+    );
+  }
+
+  /* ------------------------------------------------------------------------ */
+  /* DELETE                                                                   */
+  /* ------------------------------------------------------------------------ */
+
+  async function handleDelete(
+    id: string
+  ) {
+    const confirmed =
+      window.confirm(
+        "Deseja realmente excluir este compromisso?"
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const {
+      error,
+    } =
+      await supabase
+        .from("agenda")
+        .delete()
+        .eq(
+          "id",
+          id
+        );
+
+    if (error) {
+      console.error(
+        "Erro ao deletar compromisso:",
+        error
+      );
+
+      return;
+    }
+
+    setEvents(
+      (current) =>
+        current.filter(
+          (event) =>
+            event.id !== id
+        )
+    );
+
+    if (
+      detailEvent?.id === id
+    ) {
+      setDetailEvent(null);
+    }
+
+    if (
+      editEvent?.id === id
+    ) {
+      setEditEvent(null);
+    }
+  }
+
+  /* ------------------------------------------------------------------------ */
+  /* DERIVED DATA                                                             */
+  /* ------------------------------------------------------------------------ */
+
+  const pendingEvents =
+    useMemo(
+      () =>
+        events.filter(
+          (event) =>
+            !event.completed
+        ),
+      [events]
+    );
+
+  const completedEvents =
+    useMemo(
+      () =>
+        events.filter(
+          (event) =>
+            event.completed
+        ),
+      [events]
+    );
+
+  const todayEvents =
+    useMemo(
+      () =>
+        events.filter(
+          (event) =>
+            isToday(
+              event.start_time
+            )
+        ),
+      [events]
+    );
+
+  /* ------------------------------------------------------------------------ */
+  /* RENDER                                                                   */
+  /* ------------------------------------------------------------------------ */
+
+  return (
+    <div className="space-y-10 pb-10">
+
+      {/* ------------------------------------------------------------------ */}
+      {/* HEADER                                                             */}
+      {/* ------------------------------------------------------------------ */}
+
+      <header className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+
+        <div className="flex items-center gap-5">
+
+          <div
+            className="
+              flex
+              size-14
+              shrink-0
+              items-center
+              justify-center
+              rounded-2xl
+              bg-primary/10
+              text-primary
+            "
+          >
+            <CalendarDays className="size-7" />
+          </div>
+
+          <div>
+
+            <h1
+              className="
+                heading
+                text-4xl
+                font-bold
+                tracking-tight
+              "
+            >
+              Agenda
+            </h1>
+
+            <p className="mt-2 text-muted-foreground">
+              Organize seus compromissos e mantenha sua rotina de estudos em dia.
+            </p>
+
+          </div>
+
+        </div>
+
+        <Dialog
+          open={isCreateOpen}
+          onOpenChange={
+            setIsCreateOpen
+          }
+        >
+
+          <DialogTrigger
+            render={
+              <Button
+                size="lg"
+              >
+                <Plus className="size-5" />
+
+                Novo compromisso
+              </Button>
+            }
+          />
+
+          <DialogContent className="sm:max-w-lg">
+
             <DialogHeader>
-              <DialogTitle className="text-zinc-100">Novo Compromisso</DialogTitle>
+
+              <DialogTitle>
+                Novo compromisso
+              </DialogTitle>
+
+              <DialogDescription>
+                Adicione um novo compromisso à sua agenda.
+              </DialogDescription>
+
             </DialogHeader>
-            <CreateAgendaForm onSuccess={() => {
-              setIsCreateOpen(false)
-              fetchEvents()
-            }} />
+
+            <CreateAgendaForm
+              onSuccess={() => {
+                setIsCreateOpen(
+                  false
+                );
+
+                fetchEvents();
+              }}
+            />
+
           </DialogContent>
+
         </Dialog>
+
+      </header>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* SUMMARY                                                            */}
+      {/* ------------------------------------------------------------------ */}
+
+      <div
+        className="
+          grid
+          gap-4
+          sm:grid-cols-2
+          lg:grid-cols-3
+        "
+      >
+
+        <Card>
+          <CardContent className="p-5">
+
+            <div className="flex items-center gap-4">
+
+              <div
+                className="
+                  flex
+                  size-11
+                  items-center
+                  justify-center
+                  rounded-xl
+                  bg-primary/10
+                  text-primary
+                "
+              >
+                <CalendarDays className="size-5" />
+              </div>
+
+              <div>
+
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Compromissos
+                </p>
+
+                <p className="mt-1 text-2xl font-bold">
+                  {events.length}
+                </p>
+
+              </div>
+
+            </div>
+
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-5">
+
+            <div className="flex items-center gap-4">
+
+              <div
+                className="
+                  flex
+                  size-11
+                  items-center
+                  justify-center
+                  rounded-xl
+                  bg-amber-500/10
+                  text-amber-600
+                "
+              >
+                <Clock3 className="size-5" />
+              </div>
+
+              <div>
+
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Pendentes
+                </p>
+
+                <p className="mt-1 text-2xl font-bold">
+                  {pendingEvents.length}
+                </p>
+
+              </div>
+
+            </div>
+
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-5">
+
+            <div className="flex items-center gap-4">
+
+              <div
+                className="
+                  flex
+                  size-11
+                  items-center
+                  justify-center
+                  rounded-xl
+                  bg-emerald-500/10
+                  text-emerald-600
+                "
+              >
+                <CheckCircle2 className="size-5" />
+              </div>
+
+              <div>
+
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Concluídos
+                </p>
+
+                <p className="mt-1 text-2xl font-bold">
+                  {completedEvents.length}
+                </p>
+
+              </div>
+
+            </div>
+
+          </CardContent>
+        </Card>
+
       </div>
 
-      <Card className="border-zinc-800 bg-zinc-900 p-6 space-y-6">
-        <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
-          <h3 className="text-lg font-medium text-zinc-100">Seus Próximos Eventos</h3>
-          <Button 
-            variant="outline" 
-            size="icon" 
-            className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
-            onClick={fetchEvents}
-            title="Atualizar"
+      {/* ------------------------------------------------------------------ */}
+      {/* AGENDA                                                             */}
+      {/* ------------------------------------------------------------------ */}
+
+      <section className="space-y-6">
+
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+
+          <div>
+
+            <h2 className="text-xl font-semibold tracking-tight">
+              Seus compromissos
+            </h2>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+              Acompanhe sua rotina e mantenha seus estudos organizados.
+            </p>
+
+          </div>
+
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() =>
+              fetchEvents(true)
+            }
+            disabled={
+              loading ||
+              refreshing
+            }
+            title="Atualizar agenda"
           >
-            <RefreshCw className="h-4 w-4" />
+            {refreshing ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <RefreshCw className="size-4" />
+            )}
           </Button>
+
         </div>
-        
+
+        {/* ---------------------------------------------------------------- */}
+        {/* LOADING                                                          */}
+        {/* ---------------------------------------------------------------- */}
+
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-zinc-400 gap-2">
-            <Loader2 className="h-5 w-5 animate-spin text-[#ff5f3a]" />
-            <span>Carregando...</span>
+
+          <div className="space-y-4">
+
+            {Array.from({
+              length: 3,
+            }).map(
+              (_, index) => (
+                <Card
+                  key={index}
+                >
+                  <CardContent className="p-6">
+
+                    <div className="animate-pulse space-y-4">
+
+                      <div className="h-5 w-2/5 rounded bg-muted" />
+
+                      <div className="h-4 w-3/5 rounded bg-muted" />
+
+                      <div className="h-4 w-1/3 rounded bg-muted" />
+
+                    </div>
+
+                  </CardContent>
+                </Card>
+              )
+            )}
+
           </div>
+
         ) : events.length === 0 ? (
-          <div className="text-zinc-500 italic text-sm py-4">
-            Nenhum compromisso agendado ainda.
-          </div>
-        ) : (
-          <div className="grid gap-4">
-            {events.map((event) => (
-              <div 
-                key={event.id} 
-                className={`p-4 rounded-lg bg-zinc-950 border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-                  event.completed 
-                    ? "border-emerald-500/20 opacity-60 bg-zinc-950/40" 
-                    : "border-zinc-800/60 hover:border-zinc-700"
-                }`}
+
+          /* -------------------------------------------------------------- */
+          /* EMPTY                                                           */
+          /* -------------------------------------------------------------- */
+
+          <Card className="border-dashed">
+
+            <CardContent
+              className="
+                flex
+                flex-col
+                items-center
+                justify-center
+                px-6
+                py-16
+                text-center
+              "
+            >
+
+              <div
+                className="
+                  flex
+                  size-16
+                  items-center
+                  justify-center
+                  rounded-full
+                  bg-primary/10
+                  text-primary
+                "
               >
-                <div className="flex items-start gap-3 max-w-xl">
-                  <button 
-                    onClick={() => toggleComplete(event.id, event.completed)}
-                    className="mt-1 flex-shrink-0 transition-transform active:scale-95"
+                <CalendarDays className="size-8" />
+              </div>
+
+              <h3 className="mt-6 text-lg font-semibold">
+                Sua agenda está vazia
+              </h3>
+
+              <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+                Adicione compromissos, sessões de estudo ou outras atividades para organizar melhor sua rotina.
+              </p>
+
+              <Button
+                className="mt-6"
+                onClick={() =>
+                  setIsCreateOpen(
+                    true
+                  )
+                }
+              >
+                <Plus className="size-4" />
+
+                Adicionar compromisso
+              </Button>
+
+            </CardContent>
+
+          </Card>
+
+        ) : (
+
+          /* -------------------------------------------------------------- */
+          /* EVENTS                                                          */
+          /* -------------------------------------------------------------- */
+
+          <div className="space-y-4">
+
+            {events.map(
+              (event) => {
+
+                const today =
+                  isToday(
+                    event.start_time
+                  );
+
+                return (
+                  <Card
+                    key={event.id}
+                    className={cn(
+                      "overflow-hidden transition-all duration-200",
+                      !event.completed &&
+                        "hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md",
+                      event.completed &&
+                        "opacity-70"
+                    )}
                   >
-                    {event.completed ? (
-                      <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                    ) : (
-                      <Circle className="h-5 w-5 text-zinc-600 hover:text-emerald-500" />
-                    )}
-                  </button>
 
-                  <div className="space-y-1">
-                    <h4 className={`font-medium transition-all ${
-                      event.completed ? "line-through text-zinc-500" : "text-zinc-100"
-                    }`}>
-                      {event.title}
-                    </h4>
-                    {event.description && (
-                      <p className={`text-sm line-clamp-1 ${
-                        event.completed ? "text-zinc-600" : "text-zinc-400"
-                      }`}>
-                        {event.description}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-6 justify-between md:justify-end">
-                  <div className="text-xs text-zinc-400 space-y-1">
-                    <p><span className="text-zinc-500">Início:</span> {formatDateTime(event.start_time)}</p>
-                    <p><span className="text-zinc-500">Fim:</span> {formatDateTime(event.end_time)}</p>
-                  </div>
-                  
-                  <div className="flex items-center gap-1">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-xs text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900"
-                      onClick={() => setDetailEvent(event)}
-                    >
-                      Detalhes
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-xs text-zinc-400 hover:text-[#ff5f3a] hover:bg-zinc-900"
-                      onClick={() => setEditEvent(event)}
-                    >
-                      Editar
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="text-zinc-500 hover:text-red-400 hover:bg-zinc-900"
-                      onClick={() => handleDelete(event.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
+                    <CardContent className="p-0">
+
+                      <div className="flex flex-col md:flex-row">
+
+                        {/* ------------------------------------------------ */}
+                        {/* DATE / TIME                                      */}
+                        {/* ------------------------------------------------ */}
+
+                        <div
+                          className="
+                            flex
+                            shrink-0
+                            items-center
+                            gap-4
+                            border-b
+                            border-border
+                            bg-muted/20
+                            px-6
+                            py-5
+                            md:w-48
+                            md:flex-col
+                            md:items-start
+                            md:justify-center
+                            md:border-b-0
+                            md:border-r
+                          "
+                        >
+
+                          <div className="flex items-center gap-2 text-primary">
+
+                            <Clock3 className="size-4" />
+
+                            <span className="text-lg font-bold">
+                              {formatTime(
+                                event.start_time
+                              )}
+                            </span>
+
+                          </div>
+
+                          <div className="text-sm capitalize text-muted-foreground">
+                            {today
+                              ? "Hoje"
+                              : formatShortDate(
+                                  event.start_time
+                                )}
+                          </div>
+
+                        </div>
+
+                        {/* ------------------------------------------------ */}
+                        {/* CONTENT                                           */}
+                        {/* ------------------------------------------------ */}
+
+                        <div className="flex min-w-0 flex-1 flex-col gap-5 p-6 lg:flex-row lg:items-center lg:justify-between">
+
+                          <div className="min-w-0">
+
+                            <div className="flex flex-wrap items-center gap-2">
+
+                              <h3
+                                className={cn(
+                                  "text-lg font-semibold tracking-tight",
+                                  event.completed &&
+                                    "text-muted-foreground line-through"
+                                )}
+                              >
+                                {event.title}
+                              </h3>
+
+                              {today &&
+                                !event.completed && (
+                                  <Badge
+                                    variant="outline"
+                                    className="
+                                      border-primary/20
+                                      bg-primary/10
+                                      text-primary
+                                    "
+                                  >
+                                    Hoje
+                                  </Badge>
+                                )}
+
+                              {event.completed && (
+                                <Badge
+                                  variant="outline"
+                                  className="
+                                    border-emerald-500/20
+                                    bg-emerald-500/10
+                                    text-emerald-600
+                                  "
+                                >
+                                  Concluído
+                                </Badge>
+                              )}
+
+                            </div>
+
+                            {event.description && (
+                              <p
+                                className="
+                                  mt-2
+                                  line-clamp-2
+                                  max-w-2xl
+                                  text-sm
+                                  leading-6
+                                  text-muted-foreground
+                                "
+                              >
+                                {event.description}
+                              </p>
+                            )}
+
+                            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+
+                              <span>
+                                {formatDate(
+                                  event.start_time
+                                )}
+                              </span>
+
+                              <span className="hidden sm:inline">
+                                •
+                              </span>
+
+                              <span>
+                                {formatTime(
+                                  event.start_time
+                                )}{" "}
+                                –{" "}
+                                {formatTime(
+                                  event.end_time
+                                )}
+                              </span>
+
+                            </div>
+
+                          </div>
+
+                          {/* ------------------------------------------------ */}
+                          {/* ACTIONS                                          */}
+                          {/* ------------------------------------------------ */}
+
+                          <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border pt-4 lg:border-0 lg:pt-0">
+
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() =>
+                                toggleComplete(
+                                  event.id,
+                                  event.completed
+                                )
+                              }
+                              title={
+                                event.completed
+                                  ? "Marcar como pendente"
+                                  : "Marcar como concluído"
+                              }
+                            >
+                              {event.completed ? (
+                                <CheckCircle2 className="text-emerald-600" />
+                              ) : (
+                                <Circle className="text-muted-foreground hover:text-emerald-600" />
+                              )}
+                            </Button>
+
+                            <div className="flex items-center gap-1">
+
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  setDetailEvent(
+                                    event
+                                  )
+                                }
+                              >
+                                Detalhes
+                              </Button>
+
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  setEditEvent(
+                                    event
+                                  )
+                                }
+                              >
+                                <Pencil className="size-4" />
+
+                                <span className="hidden sm:inline">
+                                  Editar
+                                </span>
+                              </Button>
+
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() =>
+                                  handleDelete(
+                                    event.id
+                                  )
+                                }
+                                title="Excluir compromisso"
+                              >
+                                <Trash2 className="size-4 text-destructive" />
+                              </Button>
+
+                            </div>
+
+                          </div>
+
+                        </div>
+
+                      </div>
+
+                    </CardContent>
+
+                  </Card>
+                );
+              }
+            )}
+
           </div>
-        )}
-      </Card>
 
-      <Dialog open={!!detailEvent} onOpenChange={(open) => !open && setDetailEvent(null)}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 text-zinc-100 max-w-md">
-          <DialogHeader><DialogTitle>Detalhes</DialogTitle></DialogHeader>
-          {detailEvent && (
-            <div className="space-y-4 pt-4">
-              <p className="text-lg font-medium">{detailEvent.title}</p>
-              <p className="text-zinc-300 text-sm">{detailEvent.description || "Sem descrição."}</p>
-              <div className="grid grid-cols-2 gap-4 text-xs text-zinc-400">
-                <p>Início: {formatDateTime(detailEvent.start_time)}</p>
-                <p>Fim: {formatDateTime(detailEvent.end_time)}</p>
+        )}
+
+      </section>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* TODAY SUMMARY                                                      */}
+      {/* ------------------------------------------------------------------ */}
+
+      {!loading &&
+        events.length > 0 &&
+        todayEvents.length > 0 && (
+          <Card className="border-primary/20 bg-primary/5">
+
+            <CardContent className="p-5">
+
+              <div className="flex items-center gap-4">
+
+                <div
+                  className="
+                    flex
+                    size-11
+                    shrink-0
+                    items-center
+                    justify-center
+                    rounded-xl
+                    bg-primary/10
+                    text-primary
+                  "
+                >
+                  <CalendarDays className="size-5" />
+                </div>
+
+                <div>
+
+                  <p className="font-semibold">
+                    Você tem{" "}
+                    {todayEvents.length}{" "}
+                    compromisso
+                    {todayEvents.length !==
+                      1 &&
+                      "s"}{" "}
+                    hoje
+                  </p>
+
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Mantenha o foco e acompanhe sua rotina ao longo do dia.
+                  </p>
+
+                </div>
+
               </div>
+
+            </CardContent>
+
+          </Card>
+        )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* DETAILS DIALOG                                                     */}
+      {/* ------------------------------------------------------------------ */}
+
+      <Dialog
+        open={
+          !!detailEvent
+        }
+        onOpenChange={(
+          open
+        ) => {
+          if (!open) {
+            setDetailEvent(
+              null
+            );
+          }
+        }}
+      >
+
+        <DialogContent className="sm:max-w-lg">
+
+          <DialogHeader>
+
+            <DialogTitle>
+              Detalhes do compromisso
+            </DialogTitle>
+
+            <DialogDescription>
+              Confira as informações deste compromisso.
+            </DialogDescription>
+
+          </DialogHeader>
+
+          {detailEvent && (
+            <div className="space-y-6 pt-2">
+
+              <div>
+
+                <h3 className="text-xl font-semibold tracking-tight">
+                  {detailEvent.title}
+                </h3>
+
+                {detailEvent.description && (
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    {detailEvent.description}
+                  </p>
+                )}
+
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+
+                <div className="rounded-xl border bg-muted/20 p-4">
+
+                  <div className="flex items-center gap-2 text-sm font-medium">
+
+                    <Clock3 className="size-4 text-primary" />
+
+                    Início
+
+                  </div>
+
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {formatDate(
+                      detailEvent.start_time
+                    )}
+                  </p>
+
+                  <p className="mt-1 text-lg font-semibold">
+                    {formatTime(
+                      detailEvent.start_time
+                    )}
+                  </p>
+
+                </div>
+
+                <div className="rounded-xl border bg-muted/20 p-4">
+
+                  <div className="flex items-center gap-2 text-sm font-medium">
+
+                    <Clock3 className="size-4 text-primary" />
+
+                    Término
+
+                  </div>
+
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {formatDate(
+                      detailEvent.end_time
+                    )}
+                  </p>
+
+                  <p className="mt-1 text-lg font-semibold">
+                    {formatTime(
+                      detailEvent.end_time
+                    )}
+                  </p>
+
+                </div>
+
+              </div>
+
+              <div className="flex items-center justify-between rounded-xl border p-4">
+
+                <span className="text-sm font-medium">
+                  Status
+                </span>
+
+                {detailEvent.completed ? (
+                  <Badge
+                    variant="outline"
+                    className="
+                      border-emerald-500/20
+                      bg-emerald-500/10
+                      text-emerald-600
+                    "
+                  >
+                    <CheckCircle2 className="mr-1 size-3" />
+
+                    Concluído
+                  </Badge>
+                ) : (
+                  <Badge
+                    variant="outline"
+                    className="
+                      border-primary/20
+                      bg-primary/10
+                      text-primary
+                    "
+                  >
+                    <Circle className="mr-1 size-3" />
+
+                    Pendente
+                  </Badge>
+                )}
+
+              </div>
+
             </div>
           )}
+
         </DialogContent>
+
       </Dialog>
 
-      <Dialog open={!!editEvent} onOpenChange={(open) => !open && setEditEvent(null)}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 text-zinc-100 max-w-md">
-          <DialogHeader><DialogTitle>Editar Compromisso</DialogTitle></DialogHeader>
+      {/* ------------------------------------------------------------------ */}
+      {/* EDIT DIALOG                                                        */}
+      {/* ------------------------------------------------------------------ */}
+
+      <Dialog
+        open={
+          !!editEvent
+        }
+        onOpenChange={(
+          open
+        ) => {
+          if (!open) {
+            setEditEvent(
+              null
+            );
+          }
+        }}
+      >
+
+        <DialogContent className="sm:max-w-lg">
+
+          <DialogHeader>
+
+            <DialogTitle>
+              Editar compromisso
+            </DialogTitle>
+
+            <DialogDescription>
+              Atualize as informações e o horário do compromisso.
+            </DialogDescription>
+
+          </DialogHeader>
+
           {editEvent && (
-            <EditAgendaForm 
-              event={editEvent} 
+            <EditAgendaForm
+              event={
+                editEvent
+              }
               onSuccess={() => {
-                setEditEvent(null)
-                fetchEvents()
-              }} 
+                setEditEvent(
+                  null
+                );
+
+                fetchEvents();
+              }}
             />
           )}
+
         </DialogContent>
+
       </Dialog>
+
     </div>
-  )
+  );
 }
